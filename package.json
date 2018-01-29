@@ -1,0 +1,28 @@
+{
+  "name": "spheron",
+  "version": "0.0.1",
+  "description": "a new spin on a neuron",
+  "main": "spheron_tests.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/corpr8/spheron.git"
+  },
+  "keywords": [
+    "spheron"
+  ],
+  "dependencies": {
+    "vectors": "^0.1.0"
+  },
+  "author": "Paul Edwards",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/corpr8/spheron/issues"
+  },
+  "homepage": "https://github.com/corpr8/spheron#readme"
+}
