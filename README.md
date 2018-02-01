@@ -5,5 +5,6 @@ Spheron - An alternative to a Neuron
 npm Install
 
 #Run the tests with:
+cd tests
 nodejs spheron_test.js
 

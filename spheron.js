@@ -1,7 +1,7 @@
 "use strict";
 
 /*
-* A spheron is a configurable computing unit. It an instance of the active component of a speheron cloud.
+* A spheron is a configurable computing unit. It an instance of the active component of a Speheronet.
 */
 
 var add = require('vectors/add')(2)
@@ -11,13 +11,7 @@ const radToDeg = 180 / Math.PI
 const degToRad = Math.PI / 180
 
 var Spheron = function (connections) {
-	var nullConfig = {
-		'input1': {type: 'input', angle: 0, val: 0},
-		'bias': {type: 'bias', angle: 90, val: 1},
-		'outputNot': {type: 'output', angle: 180, val: -1}
-	}
-
-	this.connections = (connections) ? connections : nullConfig
+	this.connections = (connections) ? connections : {}
 	this.signalVector = {}
 	this.stateTickStamp = 0
 	this.state = 'idle'
@@ -35,24 +29,14 @@ Spheron.prototype.calculateSignalVector = function(){
         	add(rv, thisConnCart)
         }
     }
-
     this.signalVector = rv
     return rv
 }
 
 Spheron.prototype.activate = function(thisConnections){
 	/*
-	* Accepts an array as per the constructor. The array only contains inputs.
-	* Sets the values into the relevant inputs
-	* Calculates the signal vector
-	*
-	* returns the signalVector (activation) as seen from each output in an array
-	*/
-
-	/*
 	* update input values
 	*/
-	//console.log("activating Spheron")
 	if(thisConnections){
 		for(var key in thisConnections) {
 			var thisConn = thisConnections[key]
@@ -61,10 +45,8 @@ Spheron.prototype.activate = function(thisConnections){
 			}
 		}
 	}
-
 	this.calculateSignalVector()
 	var thisResults = {}
-
 	/*
 	* now cycle the outputs and add them to thisResults as well as updating their value.
 	*/
@@ -81,7 +63,6 @@ Spheron.prototype.activate = function(thisConnections){
 			thisResults[key] = outputFinal
 		}
 	}
-
 	this.state = 'idle'
 	return thisResults
 }
@@ -93,4 +74,4 @@ Spheron.prototype._p2c = function(r, theta){
     ]
 }
 
-module.exports = Spheron
+module.exports = Spheron;
