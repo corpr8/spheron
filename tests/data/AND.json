@@ -1,0 +1,8 @@
+{
+	"note" : "AND Gate",
+	"io": {
+		"input1": {"type": "input", "angle": 0, "val": 0},
+		"input2": {"type": "input", "angle": 0, "val": 0},
+		"ANDout": {"type": "output", "angle": -60, "val": -1}
+	}
+}

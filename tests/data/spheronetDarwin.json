@@ -1,0 +1,67 @@
+{
+	"note" : "A test plan for a 4 bit binary counter seeded by a very basic network. This should be interesting.",
+	"options" : {
+		"tickMode": "timeout",
+		"timeout": 5,
+		"successTolerance": 1,
+		"maxPopulation" : 25,
+		"elitism" : 5
+	},
+	"spherons" : {
+		"CLOCK" : {
+			"io": {
+				"input1": {"type": "input", "angle": 0, "val": 0},
+				"rst": {"type": "input", "angle": 0, "val": 0},
+				"bias": {"type": "bias", "angle": 180, "val": 1},
+				"Out1": {"type": "output", "angle": 45, "val": 0},
+				"Out2": {"type": "output", "angle": 90, "val": 0}
+			},
+			"state": "idle",
+			"stateTickStamp": -10
+		},
+		"rst" : {
+			"io": {
+				"input1": {"type": "input", "angle": 0, "val": 0},
+				"bias": {"type": "bias", "angle": 180, "val": 1},
+				"Out": {"type": "output", "angle": 45, "val": 0},
+				"Out1": {"type": "output", "angle": 45, "val": 0},
+				"Out2": {"type": "output", "angle": 45, "val": 0}
+			},
+			"state": "idle",
+			"stateTickStamp": -10
+		},
+		"BIT1" : {
+			"io": {
+				"input1": {"type": "input", "angle": 0, "val": 0},
+				"rst": {"type": "input", "angle": 0, "val": 0},
+				"bias": {"type": "bias", "angle": 180, "val": 1},
+				"Out": {"type": "output", "angle": 180, "val": 0}
+			},
+			"state": "idle",
+			"stateTickStamp": -10
+		},
+		"BIT2" : {
+			"io": {
+				"input1": {"type": "input", "angle": 0, "val": 0},
+				"rst": {"type": "input", "angle": 0, "val": 0},
+				"bias": {"type": "bias", "angle": 180, "val": 1},
+				"Out": {"type": "output", "angle": 180, "val": 0}
+			},
+			"state": "idle",
+			"stateTickStamp": -10
+		}
+	},
+	"connections" : [
+		{"from" : "rst", "outputId" : "Out", "to" : "CLOCK", "inputId" : "rst" },
+		{"from" : "rst", "outputId" : "Out1", "to" : "BIT1", "inputId" : "rst" },
+		{"from" : "rst", "outputId" : "Out2", "to" : "BIT2", "inputId" : "rst" },
+		{"from" : "CLOCK", "outputId" : "Out1", "to" : "BIT1", "inputId" : "input1" },
+		{"from" : "CLOCK", "outputId" : "Out2", "to" : "BIT2", "inputId" : "input1" }
+	],
+	"tests" : [
+		{"inputs":{"CLOCK": {"input1": {"val": 0}},"rst": {"input1": {"val": 1}}}, "outputs": {"BIT1": {"Out": {"val": 0}},"BIT2": {"Out": {"val": 0}}}},
+		{"inputs":{"CLOCK": {"input1": {"val": 1}},"rst": {"input1": {"val": 0}}}, "outputs": {"BIT1": {"Out": {"val": 0}},"BIT2": {"Out": {"val": 1}}}},
+		{"inputs":{"CLOCK": {"input1": {"val": 0}},"rst": {"input1": {"val": 0}}}, "outputs": {"BIT1": {"Out": {"val": 1}},"BIT2": {"Out": {"val": 0}}}},
+		{"inputs":{"CLOCK": {"input1": {"val": 1}},"rst": {"input1": {"val": 0}}}, "outputs": {"BIT1": {"Out": {"val": 1}},"BIT2": {"Out": {"val": 1}}}}
+	]
+}

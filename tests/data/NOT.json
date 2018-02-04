@@ -1,0 +1,8 @@
+{
+	"note" : "NOT Gate",
+	"io": {
+		"input1": {"type": "input", "angle": 0, "val": 0},
+		"bias": {"type": "bias", "angle": 180, "val": 1},
+		"NotOut": {"type": "output", "angle": 180, "val": -1}
+	}
+}

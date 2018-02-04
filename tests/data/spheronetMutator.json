@@ -1,0 +1,36 @@
+{
+	"note" : "Fuzzy NAND gate with tests. Rewrite the tests to evolve any network.",
+	"options" : {
+		"tickMode": "timeout",
+		"timeout": 4
+	},
+	"spherons" : {
+		"AND" : {
+			"io": {
+				"input1": {"type": "input", "angle": 0, "val": 0},
+				"input2": {"type": "input", "angle": 0, "val": 0},
+				"ANDout": {"type": "output", "angle": 60, "val": 0}
+			},
+			"state": "idle",
+			"stateTickStamp": -10
+		},
+		"NOT" : {
+			"io": {
+				"input1": {"type": "input", "angle": 0, "val": 0},
+				"bias": {"type": "bias", "angle": 180, "val": 1},
+				"outputNot": {"type": "output", "angle": 180, "val": 0}
+			},
+			"state": "idle",
+			"stateTickStamp": -10
+		}
+	},
+	"connections" : [
+		{"from" : "AND", "outputId" : "ANDout", "to" : "NOT", "inputId" : "input1" }
+	],
+	"tests" : [
+		{"inputs":{"AND": {"input1": {"val": 0}, "input2": {"val": 0}}}, "outputs": {"NOT": {"outputNot": {"val": 1}}}},
+		{"inputs":{"AND": {"input1": {"val": 0}, "input2": {"val": 1}}}, "outputs": {"NOT": {"outputNot": {"val": 0.5}}}},
+		{"inputs":{"AND": {"input1": {"val": 1}, "input2": {"val": 0}}}, "outputs": {"NOT": {"outputNot": {"val": 0.5}}}},
+		{"inputs":{"AND": {"input1": {"val": 1}, "input2": {"val": 1}}}, "outputs": {"NOT": {"outputNot": {"val": 0}}}}
+	]
+}
