@@ -1,0 +1,14 @@
+{
+	"note" : "Fuzzy network element - keeps output in range -1 to +1",
+	"io": {
+		"input1": {"type": "input", "angle": 150, "val": 0},
+		"input2": {"type": "input", "angle": 220, "val": 0},
+		"bias": {"type": "bias", "angle": 37, "val": 1},
+		"FuzzyOut": {"type": "output", "angle": 180, "val": -1, "outFn" : {"mode": "sigmoid"}}
+	},
+	"tests" : [
+		{"inputs": {"input1": {"val": 0.2}, "input2": {"val": 0.1}},"outputs": {"FuzzyOut": {"val": -0.54881}}},
+		{"inputs": {"input1": {"val": 0.8}, "input2": {"val": 0.1}},"outputs": {"FuzzyOut": {"val": -0.02919}}}
+	]
+
+}

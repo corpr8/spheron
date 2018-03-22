@@ -6,7 +6,7 @@
 
 var fs = require("fs")
 var Spheron = require('../spheron.js');
-var testDefs = ["NOT", "AND", "NAND", "NOR", "XOR", "4InputXOR"]
+var testDefs = ["NOT", "AND", "NAND", "NOR", "XOR", "4InputXOR","Fuzzy"]
 var testsFailed = 0
 
 var runTest = function(thisTestDefIdx){
@@ -44,4 +44,3 @@ var runTest = function(thisTestDefIdx){
 }
 
 runTest(0)
-
