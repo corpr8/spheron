@@ -12,7 +12,7 @@ var testsFailed = 0
 var runTest = function(thisTestDefIdx){
 	var thisTestDef = testDefs[thisTestDefIdx]
 	console.log('\r\nrunning test: ' + thisTestDef)
-	var thisTestDocument = fs.readFileSync("./data/" + thisTestDef +'.json');
+	var thisTestDocument = fs.readFileSync( __dirname + "/data/" + thisTestDef +'.json');
 	thisTestDocument = JSON.parse(thisTestDocument)
 
 	var spheron = new Spheron(thisTestDocument.io)
