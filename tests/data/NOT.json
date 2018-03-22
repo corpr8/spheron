@@ -3,6 +3,11 @@
 	"io": {
 		"input1": {"type": "input", "angle": 0, "val": 0},
 		"bias": {"type": "bias", "angle": 180, "val": 1},
-		"NotOut": {"type": "output", "angle": 180, "val": -1}
-	}
+		"NotOut": {"type": "output", "angle": 180, "val": -1, "outFn" : {"mode": "eq", "val": 0}}
+	},
+	"tests" : [
+		{"inputs": {"input1": {"val": 0}},"outputs": {"NotOut": {"val": 1}}},
+		{"inputs": {"input1": {"val": 1}},"outputs": {"NotOut": {"val": 0}}}
+	]
+
 }

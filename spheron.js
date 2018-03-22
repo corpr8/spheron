@@ -40,9 +40,9 @@ Spheron.prototype.activate = function(thisConnections){
 	if(thisConnections){
 		for(var key in thisConnections) {
 			var thisConn = thisConnections[key]
-			if(thisConn.type == 'input' || thisConn.type == 'bias'){
+			//if(thisConn.type == 'input' || thisConn.type == 'bias'){
 				this.connections[key].val = thisConn.val
-			}
+			//}
 		}
 	}
 	this.calculateSignalVector()
@@ -60,11 +60,39 @@ Spheron.prototype.activate = function(thisConnections){
 			var outputFinal = Math.floor((mag(this.signalVector) * outputAmp) * 100000)/100000
 
 			thisConn.val = outputFinal
-			thisResults[key] = outputFinal
+
+			/*
+			* now apply any output flattening function
+			*/
+			thisConn = this._outputFn(thisConn)
+			thisResults[key] = thisConn.val
 		}
 	}
 	this.state = 'idle'
 	return thisResults
+}
+
+Spheron.prototype._outputFn = function(thisConn){
+	if(thisConn.outputFn){
+		if(thisConn.outputFn.mode == "eq"){
+			//tests if equal
+			thisConn.val = (thisConn.val == thisConn.outputFn.val) ? 1 : 0
+		} else if(thisConn.outputFn.mode == "neq"){
+			//tests if not equal
+			thisConn.val = (thisConn.val != thisConn.outputFn.val) ? 1 : 0
+		} else if(thisConn.outputFn.mode == "neq_nz"){
+			//tests if not equal && not zero
+			thisConn.val = (thisConn.val != thisConn.outputFn.val && thisConn.val != 0) ? 1 : 0
+		} else if(thisConn.outputFn.mode == "sigmoid"){
+			//applies the sigmoid flattening function ala traditional neurons.
+			//*** To be verified ***
+			thisConn.val = 1 / (1 - Math.exp(thisConn.val))
+			//*** end To be verified ***
+		} else {
+			console.log('non handled case')
+		}
+	}
+	return thisConn
 }
 
 Spheron.prototype._p2c = function(r, theta){

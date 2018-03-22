@@ -1,0 +1,14 @@
+{
+	"note" : "XOR Gate with test plan",
+	"io": {
+		"input1": {"type": "input", "angle": 0, "val": 0},
+		"input2": {"type": "input", "angle": 0, "val": 0},
+		"ANDout": {"type": "output", "angle": 60, "val": -1, "outputFn" : {"mode": "eq", "val": 0.5}}
+	},
+	"tests" : [
+		{"inputs": {"input1": {"val": 0},"input2": {"val": 0}},"outputs": {"ANDout": {"val": 0}}},
+		{"inputs": {"input1": {"val": 0},"input2": {"val": 1}},"outputs": {"ANDout": {"val": 1}}},
+		{"inputs": {"input1": {"val": 1},"input2": {"val": 0}},"outputs": {"ANDout": {"val": 1}}},
+		{"inputs": {"input1": {"val": 1},"input2": {"val": 1}},"outputs": {"ANDout": {"val": 0}}}
+	]
+}
