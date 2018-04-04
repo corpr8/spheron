@@ -22,13 +22,24 @@ mongoUtils.init(function(){
 						console.log('read spheron: ' + JSON.stringify(result) + "\r\n")
 						mongoUtils.readConnection(thisConnectionId, function(result){
 							console.log('read connection: ' + JSON.stringify(result) + "\r\n")
-							mongoUtils.deleteConnection(thisConnectionId, function(result){
-								console.log('successful connection delete')
-								mongoUtils.deleteSpheron(thisSpheronId, function(result){
-									console.log('successful spheron delete')
-									process.exit()
+
+							mongoUtils.updateSpheron(thisSpheronId, {io:{input1:{angle:90}}}, function(result){
+								console.log('updated spheron: ' + "\r\n")
+								mongoUtils.readSpheron(thisSpheronId, function(result){
+									console.log('read spheron: ' + JSON.stringify(result) + "\r\n")
+
+
+
+									mongoUtils.deleteConnection(thisConnectionId, function(result){
+										console.log('successful connection delete')
+										mongoUtils.deleteSpheron(thisSpheronId, function(result){
+											console.log('successful spheron delete')
+											process.exit()
+										})
+									})	
 								})
 							})
+
 						})
 					})
 				})

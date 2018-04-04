@@ -98,20 +98,40 @@ var mongoUtils = {
 		});
 	},
 	updateSpheron: function(spheronId, updateJSON, callback){
+		/*
+		* note: this is broken currently
+		*/
 		try {
-			mongoNet.updateOne({
-				type : "spheron",
+			mongoNet.find({
+				type:"spheron",
 				spheronId: spheronId
-			},
-			{
-				$set: updateJSON
+			}).forEach(function (doc) {
+				console.log(doc)
+				console.log(doc.io)
+
+				if(updateJSON.io){
+					for (var port in updateJSON.io) {
+					    console.log(port + " will be " + JSON.stringify(updateJSON.io[port]));
+					    for (var setting in updateJSON.io[port]) {
+					    	console.log(setting + " will be " + updateJSON.io[port][setting])
+					    	doc.io[port][setting] = updateJSON.io[port][setting]
+					    }
+					}
+				}
+
+				console.log('new doc', doc)
+				mongoNet.save(doc);
 			});
+
 			callback()
 		} catch (e) {
 			throw(e)
 		}
 	},
 	updateConnection: function(connectionId, updateJSON, callback){
+		/*
+		* note: this is broken currently
+		*/
 		try {
 			mongoNet.updateOne({
 				type : "connection",
