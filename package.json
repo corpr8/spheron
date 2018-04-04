@@ -17,6 +17,7 @@
     "spheron"
   ],
   "dependencies": {
+    "mongodb": "^3.0.5",
     "vectors": "^0.1.0"
   },
   "author": "Paul Edwards",
