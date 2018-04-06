@@ -107,7 +107,6 @@ var mongoUtils = {
 				spheronId: spheronId
 			}).forEach(function (doc) {
 				console.log(doc)
-				console.log(doc.io)
 
 				if(updateJSON.io){
 					for (var port in updateJSON.io) {
@@ -121,9 +120,10 @@ var mongoUtils = {
 
 				console.log('new doc', doc)
 				mongoNet.save(doc);
+				callback()
 			});
 
-			callback()
+			
 		} catch (e) {
 			throw(e)
 		}

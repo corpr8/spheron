@@ -25,7 +25,7 @@ mongoUtils.init(function(){
 
 							mongoUtils.updateSpheron(thisSpheronId, {io:{input1:{angle:90}}}, function(result){
 								console.log('updated spheron: ' + "\r\n")
-								mongoUtils.readSpheron(thisSpheronId, function(result){
+								setTimeout(function(){mongoUtils.readSpheron(thisSpheronId, function(result){
 									console.log('read spheron: ' + JSON.stringify(result) + "\r\n")
 
 
@@ -37,6 +37,7 @@ mongoUtils.init(function(){
 											process.exit()
 										})
 									})	
+								},1)
 								})
 							})
 
