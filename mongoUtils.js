@@ -98,54 +98,35 @@ var mongoUtils = {
 		});
 	},
 	updateSpheron: function(spheronId, updateJSON, callback){
-		/*
-		* note: this is broken currently
-		*/
 		try {
 			mongoNet.find({
 				type:"spheron",
 				spheronId: spheronId
 			}).forEach(function (doc) {
-				console.log(doc)
-
 				if(updateJSON.io){
 					for (var port in updateJSON.io) {
-					    console.log(port + " will be " + JSON.stringify(updateJSON.io[port]));
 					    for (var setting in updateJSON.io[port]) {
-					    	console.log(setting + " will be " + updateJSON.io[port][setting])
 					    	doc.io[port][setting] = updateJSON.io[port][setting]
 					    }
 					}
 				}
-
-				console.log('new doc', doc)
 				mongoNet.save(doc);
 				callback()
 			});
-
-			
 		} catch (e) {
 			throw(e)
 		}
 	},
 	updateConnection: function(connectionId, updateJSON, callback){
 		/*
-		* note: this is broken currently
+		* Not sure this makes sense as connections are just dumb things that link ports together...
+		* Maybe we just support add and delete
 		*/
-		try {
-			mongoNet.updateOne({
-				type : "connection",
-				connectionId: connectionId
-			},
-			{
-				$set: updateJSON
-			});
-			callback()
-		} catch (e) {
-			throw(e)
-		}
 	},
 	deleteSpheron: function(spheronId, callback){
+		/*
+		* TODO: We should make sure that deleting a spheron is safe - i.e. there are no connection objects pointing at or from it.
+		*/
 		try {
 			mongoNet.deleteOne( { type: "spheron", spheronId : spheronId } );
 			callback()
@@ -155,6 +136,10 @@ var mongoUtils = {
 		}
 	},
 	deleteConnection: function(connectionId, callback){
+		/*
+		* TODO: We should make sure that deletes are safe - i.e. that we get rid of their corresponding spheron port.
+		* TODO: We should also make sure that deleting a spheron port is safe - i.e. the system is not mid activation.
+		*/
 		try {
 			mongoNet.deleteOne( { type: "connection", "connectionId" : connectionId } );
 			callback()
