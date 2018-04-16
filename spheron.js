@@ -40,9 +40,7 @@ Spheron.prototype.activate = function(thisConnections){
 	if(thisConnections){
 		for(var key in thisConnections) {
 			var thisConn = thisConnections[key]
-			//if(thisConn.type == 'input' || thisConn.type == 'bias'){
 				this.connections[key].val = thisConn.val
-			//}
 		}
 	}
 	this.calculateSignalVector()

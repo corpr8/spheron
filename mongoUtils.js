@@ -16,12 +16,22 @@ var mongoUtils = {
 		MongoClient.connect(url, function(err, thisDb) {
 			db = thisDb
 			if (err) throw err;
-			dbo = db.db("mydb");
+			dbo = db.db("myBrain");
 			mongoNet = dbo.collection("brain")
 			console.log('Connected to Mongo')
-			callback()
-		});
 
+			mongoNet.insertOne({
+				tick:"tock",
+				globalTick: 0
+			}, function(err,res){
+				if(err){ 
+					throw err
+				} else { 
+					console.log('inserted tick')
+					callback()
+				}
+			})
+		});
 	},
 	closeDb: function(){
 		db.close()
@@ -46,7 +56,7 @@ var mongoUtils = {
 		model.spheronId = (model.spheronId) ? model.spheronId : generateUUID()
 		model.name = (model.name) ? model.name : "testSpheron"
 		model.state = (model.state) ? model.state : "idle"
-		model.stateTickStamp = (model.stateTickStamp) ? model.stateTickStamp : "idle"
+		model.stateTickStamp = (model.stateTickStamp) ? model.stateTickStamp : 0
 
 		mongoNet.insertOne(model, function(err, res) {
 			if (err) throw err;
@@ -54,7 +64,6 @@ var mongoUtils = {
 			//return the new spheron id.
 			callback(model.spheronId)
 		});
-		
 	},
 	createConnection: function(model, callback){
 		model = (!!model) ? model : {
@@ -66,11 +75,11 @@ var mongoUtils = {
 
 		model.type = "connection"
 		model.connectionId = (model.connectionId) ? model.connectionId : generateUUID()
-		//should return a connection object with an id.
+		//should return a connection object id.
 
 		/*
 		* TODO: We should validate that this connection connects to existent ports and spherons. 
-		* TODO: We should consider the above as a background admin task also.
+		* TODO: We should consider the above as a background maintenance task also.
 		*/
 
 		mongoNet.insertOne(model, function(err, res) {
@@ -111,7 +120,10 @@ var mongoUtils = {
 					}
 				}
 				mongoNet.save(doc);
-				callback()
+				process.nextTick(function(){
+					callback()	
+				})
+				
 			});
 		} catch (e) {
 			throw(e)
@@ -119,13 +131,15 @@ var mongoUtils = {
 	},
 	updateConnection: function(connectionId, updateJSON, callback){
 		/*
-		* Not sure this makes sense as connections are just dumb things that link ports together...
-		* Maybe we just support add and delete
+		* This can only possibly make sense in terms of re-honing a connection which is essentially modifying a Spheron.
+		* Not true...
 		*/
 	},
 	deleteSpheron: function(spheronId, callback){
 		/*
 		* TODO: We should make sure that deleting a spheron is safe - i.e. there are no connection objects pointing at or from it.
+		* TODO: We should also make sure that deleting a spheron port is safe - 
+		* i.e. the system is not mid activation and nothing is left as a dead end...
 		*/
 		try {
 			mongoNet.deleteOne( { type: "spheron", spheronId : spheronId } );
@@ -138,7 +152,6 @@ var mongoUtils = {
 	deleteConnection: function(connectionId, callback){
 		/*
 		* TODO: We should make sure that deletes are safe - i.e. that we get rid of their corresponding spheron port.
-		* TODO: We should also make sure that deleting a spheron port is safe - i.e. the system is not mid activation.
 		*/
 		try {
 			mongoNet.deleteOne( { type: "connection", "connectionId" : connectionId } );
@@ -152,6 +165,55 @@ var mongoUtils = {
 		mongoNet.drop()
 		console.log('Collection dropped')
 		callback()
+	},
+	getNextPendingSpheron: function(callback){
+		//TODO: Works but needs to return the one with the lowest pendAct + state == pending
+		mongoNet.findOneAndUpdate({
+			type:"spheron",
+			state:"pending"
+		},{
+			$set:{state:"running"}
+		}, {
+			new: true,
+			sort: {stateTickStamp: -1}
+		}, function(err,doc){
+			if(err){ 
+				throw err
+			} else { 
+				callback(doc)
+			}	
+		})
+	},
+	incrementTick: function(callback){
+		mongoNet.findAndModify(
+		    {tick: "tock"},
+		    [],
+		    { $inc: { "globalTick" :1 } },
+		    {new: true,
+		    upsert: true
+			}
+		    , function(err,res){
+			if(err){ 
+				throw err
+			} else {
+				callback(res.value.globalTick)
+			}
+		})
+	},
+	getTick: function(callback){
+		mongoNet.findOne(
+		    {tick: "tock"}, 
+		function(err,res){
+			if(err){ 
+				throw err
+			} else {
+				console.log(JSON.stringify(res))
+				callback(res.globalTick)
+			}
+		})
+	},
+	loadSpheronet: function(targetSpheronet){
+		
 	}
 }
 
