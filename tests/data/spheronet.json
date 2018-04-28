@@ -1,30 +1,30 @@
 {
-	"note" : "A sample network: Fuzzy NAND.",
-	"options" : {
-		"tickMode": "timeout",
-		"timeout": 4
+"note" : "A sample network: Fuzzy NAND.",
+"options" : {
+	"tickMode": "timeout",
+	"timeout": 4
 	},
-	"spherons" : {
-		"AND" : {
-			"io": {
-				"input1": {"type": "input", "angle": 0, "val": 0},
-				"input2": {"type": "input", "angle": 0, "val": 0},
-				"ANDout": {"type": "output", "angle": 60, "val": 0}
-			},
-			"state": "idle",
-			"stateTickStamp": -10
+"spherons" : {
+	"AND" : {
+		"io": {
+			"input1": {"type": "input", "angle": 0, "val": 0},
+			"input2": {"type": "input", "angle": 0, "val": 0},
+			"ANDout": {"type": "output", "angle": 60, "val": 0}
 		},
-		"NOT" : {
-			"io": {
-				"input1": {"type": "input", "angle": 0, "val": 0},
-				"bias": {"type": "bias", "angle": 180, "val": 1},
-				"outputNot": {"type": "output", "angle": 180, "val": 0}
-			},
-			"state": "idle",
-			"stateTickStamp": -10
-		}
+		"state": "pending",
+		"stateTickStamp": -10
 	},
-	"connections" : [
-		{"from" : "AND", "outputId" : "ANDout", "to" : "NOT", "inputId" : "input1" }
+	"NOT" : {
+		"io": {
+			"input1": {"type": "input", "angle": 0, "val": 0},
+			"bias": {"type": "bias", "angle": 180, "val": 1},
+			"outputNot": {"type": "output", "angle": 180, "val": 0}
+		},
+		"state": "idle",
+		"stateTickStamp": -10
+	}
+},
+"connections" : [
+	{"from" : "AND", "outputId" : "ANDout", "to" : "NOT", "inputId" : "input1" }
 	]
 }

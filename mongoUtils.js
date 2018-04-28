@@ -1,7 +1,8 @@
 var generateUUID = require('./generateUUID.js');
 var mongo = require('mongodb');
+var fs = require('fs');
 var MongoClient = require('mongodb').MongoClient;
-//var ObjectId = require('mongodb').ObjectID;
+var ObjectId = require('mongodb').ObjectID;
 var url = "mongodb://localhost:27017/";
 var db = [];
 var dbo = [];
@@ -19,22 +20,30 @@ var mongoUtils = {
 			dbo = db.db("myBrain");
 			mongoNet = dbo.collection("brain")
 			console.log('Connected to Mongo')
-
-			mongoNet.insertOne({
-				tick:"tock",
-				globalTick: 0
-			}, function(err,res){
-				if(err){ 
-					throw err
-				} else { 
-					console.log('inserted tick')
-					callback()
-				}
-			})
+			callback()
 		});
 	},
 	closeDb: function(){
 		db.close()
+		return
+	},
+	initTick:function(callback){
+		mongoNet.insertOne({
+			tick:"tock",
+			globalTick: 0
+		}, function(err,res){	
+			if(err){ 
+				throw err
+			} else { 
+				console.log('inserted tick')
+				callback()
+			}
+		})		
+	},
+	dropDb: function(){
+		mongoNet.drop()
+		console.log('dropped old database')
+		return
 	},
 	find: function(callback){
 		mongoNet.find({}).toArray(function(err, result) {
@@ -88,6 +97,22 @@ var mongoUtils = {
 			callback(model.connectionId)
 		});
 	},
+	createSpheronetMetaData: function(model, callback){
+		model = (!!model) ? model : {
+			note: "a basic description of this spheronets purpose",
+			tickMode : "timeout", 
+			timeOut : 4,
+			spheronetId: generateUUID()
+		};
+		//TODO:
+		model.type = "meta"
+
+		mongoNet.insertOne(model, function(err, res) {
+			if (err) throw err;
+			//return the new connection id.
+			callback(model.spheronetId)
+		});
+	},
 	readSpheron: function(spheronId, callback){
 		mongoNet.findOne({
 			type: "spheron",
@@ -122,8 +147,7 @@ var mongoUtils = {
 				mongoNet.save(doc);
 				process.nextTick(function(){
 					callback()	
-				})
-				
+				})				
 			});
 		} catch (e) {
 			throw(e)
@@ -177,8 +201,8 @@ var mongoUtils = {
 			new: true,
 			sort: {stateTickStamp: -1}
 		}, function(err,doc){
-			if(err){ 
-				throw err
+			if(err){
+				callback({})
 			} else { 
 				callback(doc)
 			}	
@@ -212,10 +236,103 @@ var mongoUtils = {
 			}
 		})
 	},
-	loadSpheronet: function(targetSpheronet){
-		
+	loadSpheronet: function(targetSpheronet, callback){
+		//this is an analogue of spheron_tests but pushing stuff into mongo
+		//TODO: We need to work out how / where to push metadata which may/will change with each offspringId
+		console.log('\r\ trying to load network: ' + targetSpheronet)
+		var that = this
+		var thisTestDocument = fs.readFileSync( __dirname + "/tests/data/" + targetSpheronet +'.json')
+		thisTestDocument = JSON.parse(thisTestDocument)
+
+		console.log('inserting spherons')
+		this._insertSpheronIterator(thisTestDocument.spherons, 0, 0, 0, 0, function(){
+			//ok we have inserted all of the spherons
+			console.log('inserting connections')
+			that._insertConnectionIterator(thisTestDocument.connections, 0, 0, 0, 0, function(){
+				//a quick hack - we should consider if the element should live in options...
+				if(thisTestDocument.note) thisTestDocument.options.note = thisTestDocument.note
+				that._insertSpheronetMetaData(thisTestDocument.options, 0, 0, 0, function(){
+					callback()	
+				})
+			})
+		})
+	},
+	_insertSpheronetMetaData: function(spheronetDocument, spheronetId, generationId, offspringId, callback){
+		//push the metatdata into a document.
+		spheronetDocument.spheronetId = (spheronetId) ? spheronetId : 0
+		spheronetDocument.generationId = (generationId) ? generationId : 0
+		spheronetDocument.offspringId = (offspringId) ? offspringId : 0
+		mongoUtils.createSpheronetMetaData(spheronetDocument, function(){
+			callback()
+		})
+	},
+	_insertSpheronIterator: function(spheronsDocument, idx, spheronetId, generationId, offspringId, callback){
+		//note: spheronetId is a unique identifier for this network across all iterations and evolutions
+		//note: generationId is a unique identifier for everything in this network, for this specific generation 
+		//note: offspringId is a unique identifier for a specific instance of a spheronet - i.e. a child network within a generation.
+		//note: all in - spheronets have generations and generations have offspring
+		var that = this
+		if(Object.keys(spheronsDocument)[idx]){
+			spheronsDocument[Object.keys(spheronsDocument)[idx]].spheronetId = (spheronetId) ? spheronetId : 0
+			spheronsDocument[Object.keys(spheronsDocument)[idx]].generationId = (generationId) ? generationId : 0
+			spheronsDocument[Object.keys(spheronsDocument)[idx]].offspringId = (offspringId) ? offspringId : 0
+			mongoUtils.createSpheron(spheronsDocument[Object.keys(spheronsDocument)[idx]], function(){
+				idx += 1
+				that._insertSpheronIterator(spheronsDocument, idx, spheronetId, generationId, offspringId, callback)
+			})
+		} else {
+			callback()
+		}
+	},
+	_insertConnectionIterator: function(connectionsDocument, idx, spheronetId, generationId, offspringId, callback){
+		var that = this
+		if(Object.keys(connectionsDocument)[idx]){
+			connectionsDocument[Object.keys(connectionsDocument)[idx]].spheronetId = (spheronetId) ? spheronetId : 0
+			connectionsDocument[Object.keys(connectionsDocument)[idx]].generationId = (generationId) ? generationId : 0
+			connectionsDocument[Object.keys(connectionsDocument)[idx]].offspringId = (offspringId) ? offspringId : 0
+
+			mongoUtils.createConnection(connectionsDocument[Object.keys(connectionsDocument)[idx]], function(){
+				idx += 1
+				that._insertConnectionIterator(connectionsDocument, idx, spheronetId, generationId, offspringId, callback)
+			})
+		} else {
+			callback()
+		}
+	},
+	generateMutantOffspringIterator: function(parentSpheronetIdList, idx, limit, callback){
+		//iterativbely mutate offspring based on 1 of the spheronets referred to in the list...
+	},
+	generateOffspring: function(parentSpheronetIdList, idx, limit, callback){
+		//copy random network to a new, identical instance.
+		if(idx < limit){
+			var that = this
+			var parentSpheronetId = parentSpheronetIdList[Math.floor(Math.random() * parentSpheronetIdList.length)]
+			var newSpheronetId = generateUUID()
+			console.log('parentSpheronetId ' + parentSpheronetId)
+			var myCursor = mongoNet.find({"spheronetId": parentSpheronetId });
+
+			myCursor.forEach(function(doc){
+				console.log('iterating cursor')
+				if(doc){
+					console.log(doc)
+					doc._id = new ObjectId()
+					doc.spheronetId = newSpheronetId
+					mongoNet.insert(doc)
+				}else {
+					console.log('no docs')
+				}
+			})
+			idx += 1
+			that.generateOffspring(parentSpheronetIdList, idx, limit, callback)	
+		} else {
+			//we've done enough
+			callback()
+		}
+
+	},
+	mutateSpheronet: function(spheronetId, callback){
+		//mutate an existent spheronet
 	}
 }
 
 module.exports = mongoUtils;
-

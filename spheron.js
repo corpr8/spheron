@@ -84,7 +84,7 @@ Spheron.prototype._outputFn = function(thisConn){
 		} else if(thisConn.outputFn.mode == "sigmoid"){
 			//applies the sigmoid flattening function ala traditional neurons.
 			//*** To be verified ***
-			thisConn.val = 1 / (1 + Math.exp(-t))
+			thisConn.val = 1 / (1 + Math.exp(-thisConn.val))
 			//*** end To be verified ***
 		} else {
 			console.log('non handled case')
