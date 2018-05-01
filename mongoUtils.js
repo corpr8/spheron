@@ -51,7 +51,7 @@ var mongoUtils = {
 	    	callback(result)
 		});
 	},
-	createSpheron: function(model, callback){
+	createSpheron: function(spheronName, model, callback){
 		model = (!!model) ? model : {
 			io: {
 				input1: {type: "input", angle: 0, val: 0},
@@ -63,7 +63,7 @@ var mongoUtils = {
 
 		model.type = "spheron"
 		model.spheronId = (model.spheronId) ? model.spheronId : generateUUID()
-		model.name = (model.name) ? model.name : "testSpheron"
+		model.name = (spheronName) ? spheronName : "testSpheron"
 		model.state = (model.state) ? model.state : "idle"
 		model.stateTickStamp = (model.stateTickStamp) ? model.stateTickStamp : 0
 
@@ -131,19 +131,42 @@ var mongoUtils = {
 	    	callback(result)
 		});
 	},
-	updateSpheron: function(spheronId, updateJSON, callback){
+	findConnectionByInputId: function(from, outputId, spheronetId, callback){
+		mongoNet.findOne({
+			fromId: from,
+			outputId: outputId
+		}, function(err,result){
+			if(err) throw err;
+			callback(result)
+		})
+	},
+	updateSpheron: function(spheronId, spheronetId, updateJSON, callback){
+		console.log('about to update spheron: ' + spheronId)
 		try {
 			mongoNet.find({
 				type:"spheron",
+				spheronetId: spheronetId,
 				spheronId: spheronId
 			}).forEach(function (doc) {
 				if(updateJSON.io){
 					for (var port in updateJSON.io) {
 					    for (var setting in updateJSON.io[port]) {
+					    	console.log(doc.io)
+					    	console.log(port)
+					    	console.log(doc.io[port][setting])
+					    	console.log(updateJSON.io[port][setting])
 					    	doc.io[port][setting] = updateJSON.io[port][setting]
 					    }
 					}
 				}
+				if(updateJSON.state){
+					doc.state = updateJSON.state
+				}
+				if(updateJSON.stateTickStamp){
+					doc.stateTickStamp = updateJSON.stateTickStamp
+				}
+
+				console.log('updated doc is: ' + JSON.stringify(doc))
 				mongoNet.save(doc);
 				process.nextTick(function(){
 					callback()	
@@ -153,7 +176,7 @@ var mongoUtils = {
 			throw(e)
 		}
 	},
-	updateConnection: function(connectionId, updateJSON, callback){
+	updateConnection: function(connectionId, spheronetId, updateJSON, callback){
 		/*
 		* This can only possibly make sense in terms of re-honing a connection which is essentially modifying a Spheron.
 		* Not true...
@@ -178,7 +201,10 @@ var mongoUtils = {
 		* TODO: We should make sure that deletes are safe - i.e. that we get rid of their corresponding spheron port.
 		*/
 		try {
-			mongoNet.deleteOne( { type: "connection", "connectionId" : connectionId } );
+			mongoNet.deleteOne({
+				type: "connection", 
+				connectionId : connectionId 
+			});
 			callback()
 		} catch (e) {
 			console.log('bad delete: ' + e)
@@ -245,14 +271,16 @@ var mongoUtils = {
 		thisTestDocument = JSON.parse(thisTestDocument)
 
 		console.log('inserting spherons')
-		this._insertSpheronIterator(thisTestDocument.spherons, 0, 0, 0, 0, function(){
+		this._insertSpheronIterator(thisTestDocument, 0, 0, 0, 0, function(thisTestDocument){
 			//ok we have inserted all of the spherons
 			console.log('inserting connections')
-			that._insertConnectionIterator(thisTestDocument.connections, 0, 0, 0, 0, function(){
-				//a quick hack - we should consider if the element should live in options...
-				if(thisTestDocument.note) thisTestDocument.options.note = thisTestDocument.note
-				that._insertSpheronetMetaData(thisTestDocument.options, 0, 0, 0, function(){
-					callback()	
+			that._updateSpheronReferencesInConnections(thisTestDocument, function(thisTestDocument){
+				that._insertConnectionIterator(thisTestDocument.connections, 0, 0, 0, 0, function(){
+					//a quick hack - we should consider if the element should live in options...
+					if(thisTestDocument.note) thisTestDocument.options.note = thisTestDocument.note
+					that._insertSpheronetMetaData(thisTestDocument.options, 0, 0, 0, function(){
+						callback()	
+					})
 				})
 			})
 		})
@@ -272,17 +300,33 @@ var mongoUtils = {
 		//note: offspringId is a unique identifier for a specific instance of a spheronet - i.e. a child network within a generation.
 		//note: all in - spheronets have generations and generations have offspring
 		var that = this
-		if(Object.keys(spheronsDocument)[idx]){
-			spheronsDocument[Object.keys(spheronsDocument)[idx]].spheronetId = (spheronetId) ? spheronetId : 0
-			spheronsDocument[Object.keys(spheronsDocument)[idx]].generationId = (generationId) ? generationId : 0
-			spheronsDocument[Object.keys(spheronsDocument)[idx]].offspringId = (offspringId) ? offspringId : 0
-			mongoUtils.createSpheron(spheronsDocument[Object.keys(spheronsDocument)[idx]], function(){
+		if(Object.keys(spheronsDocument.spherons)[idx]){
+			spheronsDocument.spherons[Object.keys(spheronsDocument.spherons)[idx]].spheronetId = (spheronetId) ? spheronetId : 0
+			spheronsDocument.spherons[Object.keys(spheronsDocument.spherons)[idx]].generationId = (generationId) ? generationId : 0
+			spheronsDocument.spherons[Object.keys(spheronsDocument.spherons)[idx]].offspringId = (offspringId) ? offspringId : 0
+			mongoUtils.createSpheron(Object.keys(spheronsDocument.spherons)[idx], spheronsDocument.spherons[Object.keys(spheronsDocument.spherons)[idx]], function(newSpheronId){
+
 				idx += 1
 				that._insertSpheronIterator(spheronsDocument, idx, spheronetId, generationId, offspringId, callback)
 			})
 		} else {
-			callback()
+			callback(spheronsDocument)
 		}
+	},
+	_updateSpheronReferencesInConnections: function(spheronetDocument, callback){
+		//update connections in the input document with references to the created Spherons...
+		for(var thisConnection in spheronetDocument.connections){
+			if(spheronetDocument.spherons[spheronetDocument.connections[thisConnection].from]){
+				spheronetDocument.connections[thisConnection].fromId = spheronetDocument.spherons[spheronetDocument.connections[thisConnection].from].spheronId
+			}
+			if(spheronetDocument.spherons[spheronetDocument.connections[thisConnection].to]){
+				spheronetDocument.connections[thisConnection].toId = spheronetDocument.spherons[spheronetDocument.connections[thisConnection].to].spheronId
+			}
+		}
+
+		console.log(JSON.stringify(spheronetDocument) + '\r\n')
+		callback(spheronetDocument)
+
 	},
 	_insertConnectionIterator: function(connectionsDocument, idx, spheronetId, generationId, offspringId, callback){
 		var that = this
@@ -298,9 +342,6 @@ var mongoUtils = {
 		} else {
 			callback()
 		}
-	},
-	generateMutantOffspringIterator: function(parentSpheronetIdList, idx, limit, callback){
-		//iterativbely mutate offspring based on 1 of the spheronets referred to in the list...
 	},
 	generateOffspring: function(parentSpheronetIdList, idx, limit, callback){
 		//copy random network to a new, identical instance.
@@ -331,6 +372,7 @@ var mongoUtils = {
 
 	},
 	mutateSpheronet: function(spheronetId, callback){
+		//TODO: AS we have made new populations, we should mutate the new ones...
 		//mutate an existent spheronet
 	}
 }

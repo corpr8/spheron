@@ -7,8 +7,8 @@
 "spherons" : {
 	"AND" : {
 		"io": {
-			"input1": {"type": "input", "angle": 0, "val": 0},
-			"input2": {"type": "input", "angle": 0, "val": 0},
+			"input1": {"type": "input", "angle": 0, "val": 1},
+			"input2": {"type": "input", "angle": 0, "val": 1},
 			"ANDout": {"type": "output", "angle": 60, "val": 0}
 		},
 		"state": "pending",
