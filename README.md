@@ -41,3 +41,20 @@ node tests/spheronetMutator_tests.js
 
 node tests/spheronetDarwin_tests.js
 
+
+#Distributed Operation:
+
+
+netRunner.js - a distributed provess to run networks which are persisted out to a mongodb
+
+jobRunner.js - deals with the end of a tick - i.e. checking if a single test has finished (i.e. if current tick - signal tick >= tick age), assessing the score of that test, dealing with all test finished (an epoch), and providing reproduction and mutation facilities
+
+monitor.js - provides ux for monitor and control / upload of jobs JSON to the mongodb.
+
+spheron.js - the underlying component of all spheron based stuff :-)
+
+
+
+
+
+

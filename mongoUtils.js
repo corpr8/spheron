@@ -105,7 +105,7 @@ var mongoUtils = {
 			spheronetId: generateUUID()
 		};
 		//TODO:
-		model.type = "meta"
+		model.type = "child-meta"
 
 		mongoNet.insertOne(model, function(err, res) {
 			if (err) throw err;

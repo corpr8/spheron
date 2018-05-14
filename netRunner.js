@@ -13,7 +13,14 @@
 
 var mongoUtils = require('./mongoUtils.js');
 var spheron = require('./spheron.js');
+var UdpUtils = require('./udpUtils')
+var udpUtils = new UdpUtils()
 //var thisTick = -1
+
+//Just so we don't throw an error if we hear a UDP broadcast.
+udpUtils.on('message',function(thisMessage){
+	console.log('got message: ' + JSON.stringify(thisMessage))
+})
 
 var netRunner = {
 	init: function(callback){
@@ -24,9 +31,9 @@ var netRunner = {
 				mongoUtils.loadSpheronet('spheronet' ,function(){
 					console.log('we have loaded the spheronet')
 					//console.log('generating some offspring - finding a valid spheronetId first.')
-					//mongoUtils.generateOffspring([0],0,10,function(){
+					mongoUtils.generateOffspring([0],0,100,function(){
 						callback()	
-					//})					
+					})					
 				})	
 			})
 		})
@@ -36,16 +43,7 @@ var netRunner = {
 		mongoUtils.getNextPendingSpheron(function(nextPendingSpheron){
 			if(!nextPendingSpheron.value){
 				console.log('we had an error getting our next spheron - maybe we should do something else:')
-
-				//TODO: Implement housekeeping / generational / evolution mechanism storing system state in db to prevent chatter.
-
-				//Increment tick 
-				console.log('Incrementing system tick')
-				mongoUtils.incrementTick(function(){
-					setTimeout(function(){
-						netRunner.run()
-					},1)
-				})
+				callback(null)
 			} else {
 				console.log('next Spheron to process is: ' + JSON.stringify(nextPendingSpheron))
 				callback(nextPendingSpheron.value)
@@ -143,13 +141,32 @@ var netRunner = {
 	},
 	run: function(){
 		netRunner.loadNextPendingSpheron(function(nextPendingSpheron){
-			console.log('we got back from loading the next spheron with: ' + JSON.stringify(nextPendingSpheron))
-			netRunner.runSpheron(nextPendingSpheron, function(){
-				console.log('done processing this spheron - lets ask for some more work...')
-				setTimeout(function(){
-					netRunner.run()
-				},1)			
-			})
+			if(nextPendingSpheron){
+				console.log('we got back from loading the next spheron with: ' + JSON.stringify(nextPendingSpheron))
+				netRunner.runSpheron(nextPendingSpheron, function(){
+					console.log('done processing this spheron - lets ask for some more work...')
+					setTimeout(function(){
+						netRunner.run()
+					},1)			
+				})
+			} else {
+				//TODO: Implement housekeeping / generational / evolution mechanism storing system state in db to prevent chatter - or instead use a UDP datagram strategy??
+				/*
+				* First client that gets here should toggle a parameter in the db.
+				* Second client should just go into a stand-off strategy?
+				* First client looks for:
+				* problemDomainIds (i.e. problems) where all spherons are idle and currentSystemTick - startTick > timeout as defined in the individual spheronets metadata... 
+				* If we find one of those then thats a signal to run health against the population and evolve...
+				*/
+				//Increment tick 
+				console.log('Incrementing system tick')
+				mongoUtils.incrementTick(function(thisTick){
+					udpUtils.sendMessage("{tick:" + thisTick + "}")
+					setTimeout(function(){
+						netRunner.run()
+					},1)
+				})
+			}
 		})
 	}
 }
