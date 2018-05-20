@@ -2,7 +2,8 @@
 	"note" : "A sample network: Fuzzy NAND.",
 	"options" : {
 		"tickMode": "timeout",
-		"timeout": 4
+		"timeout": 4,
+		"popSize": 100
 		},
 	"spherons" : {
 		"AND" : {

@@ -41,11 +41,12 @@ app.post('/postJob', function (req, res) {
   	/*
   	* TODO: Upload the job to the mongodb and kick off processing if it is not already kicked off
   	*/
-  	mongoUtils.importSpheronet(JSON.parse(req.body.jobData) ,function(){
+  	var jobData = JSON.parse(req.body.jobData)
+  	mongoUtils.importSpheronet(jobData ,function(){
   		console.log('we have imported a spheronet')
   		//console.log('generating some offspring - finding a valid spheronetId first.')
-  		mongoUtils.generateOffspring([0],0,100,function(){
-  			res.send('ok - imported: ' + req.body.jobData)
+  		mongoUtils.generateOffspring([0],0,jobData.options.popSize,function(){
+  			res.send('ok - imported: ' + JSON.stringify(jobData) + " and bred: " + jobData.options.popSize + " offspring...")
   		})
   	})
 })

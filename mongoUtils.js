@@ -99,11 +99,11 @@ var mongoUtils = {
 	},
 	createSpheronetMetaData: function(model, callback){
 		model = (!!model) ? model : {
-			note: "a basic description of this spheronets purpose",
 			tickMode : "timeout", 
 			timeOut : 4,
 			spheronetId: generateUUID()
 		};
+		delete(model.note)
 		//TODO:
 		model.type = "child-meta"
 
@@ -118,7 +118,8 @@ var mongoUtils = {
 			note : inputModel.note,
 			type : "job-meta",
 			jobId : generateUUID(),
-			tests: inputModel.tests
+			tests: inputModel.tests,
+			popSize: inputModel.options.popSize
 		}
 
 		mongoNet.insertOne(model, function(err, res) {
@@ -410,7 +411,9 @@ var mongoUtils = {
 				}
 			})
 			idx += 1
-			that.generateOffspring(parentSpheronetIdList, idx, limit, callback)	
+			that.mutateSpheronet(newSpheronetId, function(){
+				that.generateOffspring(parentSpheronetIdList, idx, limit, callback)					
+			})
 		} else {
 			//we've done enough
 			callback()
@@ -418,8 +421,8 @@ var mongoUtils = {
 
 	},
 	mutateSpheronet: function(spheronetId, callback){
-		//TODO: AS we have made new populations, we should mutate the new ones...
-		//mutate an existent spheronet
+		//mutate an existent spheronet within mongo by Id
+		callback()
 	}
 }
 
