@@ -113,6 +113,20 @@ var mongoUtils = {
 			callback(model.spheronetId)
 		});
 	},
+	createJobMetaData: function(inputModel, callback){
+		var model = {
+			note : inputModel.note,
+			type : "job-meta",
+			jobId : generateUUID(),
+			tests: inputModel.tests
+		}
+
+		mongoNet.insertOne(model, function(err, res) {
+			if (err) throw err
+			//return the new connection id.
+			callback(model.jobId)
+		});
+	},
 	readSpheron: function(spheronId, callback){
 		mongoNet.findOne({
 			type: "spheron",
@@ -263,7 +277,7 @@ var mongoUtils = {
 		})
 	},
 	loadSpheronet: function(targetSpheronet, callback){
-		//this is an analogue of spheron_tests but pushing stuff into mongo
+		//Load a spheronet from disk into mongodb
 		//TODO: We need to work out how / where to push metadata which may/will change with each offspringId
 		console.log('\r\ trying to load network: ' + targetSpheronet)
 		var that = this
@@ -285,6 +299,29 @@ var mongoUtils = {
 			})
 		})
 	},
+	importSpheronet: function(targetSpheronetJSON, callback){
+		//Load a spheronet from disk into mongodb
+		//TODO: We need to work out how / where to push metadata which may/will change with each offspringId
+		console.log('\r\ trying to import network: ' + JSON.stringify(targetSpheronetJSON))
+		var that = this
+
+		console.log('inserting spherons')
+		this._insertSpheronIterator(targetSpheronetJSON, 0, 0, 0, 0, function(targetSpheronetJSON){
+			//ok we have inserted all of the spherons
+			console.log('inserting connections')
+			that._updateSpheronReferencesInConnections(targetSpheronetJSON, function(targetSpheronetJSON){
+				that._insertConnectionIterator(targetSpheronetJSON.connections, 0, 0, 0, 0, function(){
+					//a quick hack - we should consider if the element should live in options...
+					if(targetSpheronetJSON.note) targetSpheronetJSON.options.note = targetSpheronetJSON.note
+					that._insertSpheronetMetaData(targetSpheronetJSON.options, 0, 0, 0, function(){
+						that._insertJobMetaData(targetSpheronetJSON, 0, 0, 0, function(){
+							callback()
+						})
+					})
+				})
+			})
+		})
+	},
 	_insertSpheronetMetaData: function(spheronetDocument, spheronetId, generationId, offspringId, callback){
 		//push the metatdata into a document.
 		spheronetDocument.spheronetId = (spheronetId) ? spheronetId : 0
@@ -294,13 +331,22 @@ var mongoUtils = {
 			callback()
 		})
 	},
+	_insertJobMetaData: function(spheronetDocument, spheronetId, generationId, offspringId, callback){
+		//push the metatdata into a document.
+		//TODO: Some validation
+		mongoUtils.createJobMetaData(spheronetDocument, function(){
+			callback()
+		})
+	},
 	_insertSpheronIterator: function(spheronsDocument, idx, spheronetId, generationId, offspringId, callback){
 		//note: spheronetId is a unique identifier for this network across all iterations and evolutions
 		//note: generationId is a unique identifier for everything in this network, for this specific generation 
 		//note: offspringId is a unique identifier for a specific instance of a spheronet - i.e. a child network within a generation.
 		//note: all in - spheronets have generations and generations have offspring
+		console.log("_insertSpheronIterator received: " + spheronsDocument)
 		var that = this
 		if(Object.keys(spheronsDocument.spherons)[idx]){
+			console.log("iterated to: " + Object.keys(spheronsDocument.spherons)[idx])
 			spheronsDocument.spherons[Object.keys(spheronsDocument.spherons)[idx]].spheronetId = (spheronetId) ? spheronetId : 0
 			spheronsDocument.spherons[Object.keys(spheronsDocument.spherons)[idx]].generationId = (generationId) ? generationId : 0
 			spheronsDocument.spherons[Object.keys(spheronsDocument.spherons)[idx]].offspringId = (offspringId) ? offspringId : 0

@@ -2,7 +2,10 @@
 
 /*
 * Realtime monitoring of processing status / evolution.
+* Currently single threaded...
 */
+
+//https://appdividend.com/2018/02/16/node-js-socket-io-tutorial/
 
 const opn = require('opn');
 const mongoUtils = require('./mongoUtils.js');
@@ -28,13 +31,23 @@ app.get('/', function(req, res){
 	res.send('Hello World!')	
 })
 
+/*
+* Endpoint for job uploading.
+*/
 app.post('/postJob', function (req, res) {
 	console.log(req.body.jobData)
-  	res.send('Received a POST contazining: ' + req.body.jobData)
+  	
 
   	/*
   	* TODO: Upload the job to the mongodb and kick off processing if it is not already kicked off
   	*/
+  	mongoUtils.importSpheronet(JSON.parse(req.body.jobData) ,function(){
+  		console.log('we have imported a spheronet')
+  		//console.log('generating some offspring - finding a valid spheronetId first.')
+  		mongoUtils.generateOffspring([0],0,100,function(){
+  			res.send('ok - imported: ' + req.body.jobData)
+  		})
+  	})
 })
 
 app.use(express.static('public'))
@@ -55,8 +68,6 @@ io.sockets.on('connection',(socket) => {
    });
 });
 
-
-
 server.listen(3000, function(){
 	console.log('monitor listening on port 3000!')	
 })
@@ -73,10 +84,10 @@ udpUtils.on('message', function(thisMsg){
 	io.sockets.emit('new message', {message: thisMsg});
 })
 
-monitor.init()
+mongoUtils.init(function(){
+	monitor.init()
+	
+	// Specify the app to open in
+	opn('http://localhost:3000/monitor.html');
+})
 
-// Specify the app to open in
-opn('http://localhost:3000/monitor.html');
-
-
-//https://appdividend.com/2018/02/16/node-js-socket-io-tutorial/
