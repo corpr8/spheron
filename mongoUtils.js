@@ -391,8 +391,14 @@ var mongoUtils = {
 		}
 	},
 	generateOffspring: function(parentSpheronetIdList, idx, limit, callback){
-		//copy random network to a new, identical instance.
-		if(idx < limit){
+		//copy random network to a new, identical instance - then call mutate on it!
+		if(idx == 0){
+			console.log('we are at idx 0 of generating offspring')
+		} else {
+			console.log('we are at: ' + idx + ' of ' + limit)
+		}
+
+		if(idx <= (limit -1)){
 			var that = this
 			var parentSpheronetId = parentSpheronetIdList[Math.floor(Math.random() * parentSpheronetIdList.length)]
 			var newSpheronetId = generateUUID()
@@ -405,16 +411,20 @@ var mongoUtils = {
 					console.log(doc)
 					doc._id = new ObjectId()
 					doc.spheronetId = newSpheronetId
-					mongoNet.insert(doc)
+					mongoNet.insert(doc, function(err, records){
+						that.mutateSpheronet(newSpheronetId, function(){
+						})
+					})
 				}else {
-					console.log('no docs')
+					console.log('no more docs')
 				}
 			})
+
 			idx += 1
-			that.mutateSpheronet(newSpheronetId, function(){
-				that.generateOffspring(parentSpheronetIdList, idx, limit, callback)					
-			})
+			that.generateOffspring(parentSpheronetIdList, idx, limit, callback)					
+
 		} else {
+			console.log('finished generate offspring iterator...')
 			//we've done enough
 			callback()
 		}
@@ -422,8 +432,108 @@ var mongoUtils = {
 	},
 	mutateSpheronet: function(spheronetId, callback){
 		//mutate an existent spheronet within mongo by Id
-		callback()
+		console.log('mutating spheronet: ' + spheronetId)
+		var that = this
+		var thisChoice = Math.floor(Math.random() * 7)
+
+		switch (thisChoice) {
+			case 0:
+				console.log('tweaking timeout')
+				that._mutationOperators.tweakTimeout(spheronetId, function(){
+					callback()
+				})
+				break;
+			case 1:
+				console.log('inserting spheron')
+				that._mutationOperators.insertSpheron(spheronetId, function(){
+					callback()
+				})
+				break;
+			case 2:
+				console.log('removing spheron')
+				that._mutationOperators.removeSpheron(spheronetId, function(){
+					callback()
+				})
+				break;
+			case 3:
+				console.log('inserting connection')
+				that._mutationOperators.insertConnection(spheronetId, function(){
+					callback()
+				})
+				break;
+			case 4:
+			console.log('removing connection')
+				that._mutationOperators.removeConnection(spheronetId, function(){
+					callback()
+				})
+				break;
+			case 5:
+				console.log('tweaking port')
+				that._mutationOperators.tweakPort(spheronetId, function(){
+					callback()
+				})
+				break;
+			default:
+				// we didn't do anything so lets just callback
+				callback()
+				break;
+		}
+	},
+	_mutationOperators: {
+		tweakTimeout: function(spheronetId, callback){
+			//increase or decrease the timeout for this specific spheronet
+			//this variable is in child-meta and is called timeout
+			console.log('spheronetId is: ' + spheronetId)
+			mongoNet.findOne({
+				"type": "child-meta",
+				"spheronetId": spheronetId
+			}, function(err, doc) {
+		    	if (err) throw err;
+		    	if(!doc){
+		    		console.log('no result to tweak: ' + err + " " + doc)
+					callback()
+		    	} else {
+		    		doc.timeout = (Math.random() > .5) ? doc.timeout -= 1: doc.timeout += 1
+		    		mongoNet.save(doc, {"upsert": true}, function(err){
+		    			console.log((err) ? 'We went bang whilst tweaking timeout' : 'We tweaked the timeout ok')
+		    			callback()
+		    		})
+		    	}
+			});
+		},
+		insertSpheron:  function(spheronetId, callback){
+			//find a random connection within this spheronet
+			//insert a new spheron into the connection with associated ports...
+			callback()
+		},
+		removeSpheron:  function(spheronetId, callback){
+			//1: find a random spheron within this spheronet
+			//2: find all connections to the spheron
+			//3: create ports on other spherons and connect the end of each connection to the new port
+			//4: delete this spheron
+			callback()
+		},
+		insertConnection:  function(spheronetId, callback){
+			//1: find a random spheron within this spheronet
+			//2: find another random spheron
+			//3: create ports on each
+			//4: create a connection object.
+			//Note: must also insert associated spheron ports
+			callback()
+		},
+		removeConnection:  function(spheronetId, callback){
+			//find a random connection wihtin this spheronet.
+			//Note: must also remove associated spheron ports
+			callback()
+		},
+		tweakPort:  function(spheronetId, callback){
+			//find a random spheron within this spheronet
+			//find a random port in this spheron
+			//Note: Will change the angle slightly of either a port or a bias.
+			callback()
+		}
 	}
+
 }
 
 module.exports = mongoUtils;
