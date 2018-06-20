@@ -67,6 +67,8 @@ var mongoUtils = {
 		model.state = (model.state) ? model.state : "idle"
 		model.stateTickStamp = (model.stateTickStamp) ? model.stateTickStamp : 0
 
+		console.log('creating spheron')
+
 		mongoNet.insertOne(model, function(err, res) {
 			if (err) throw err;
 
@@ -156,40 +158,50 @@ var mongoUtils = {
 		})
 	},
 	updateSpheron: function(spheronId, spheronetId, updateJSON, callback){
-		console.log('about to update spheron: ' + spheronId)
-		try {
+		console.log('about to update spheron: ' + spheronId + ' in spheronetId: ' + spheronetId)
+		var hadDocuments = false
 			mongoNet.find({
 				type:"spheron",
 				spheronetId: spheronetId,
 				spheronId: spheronId
 			}).forEach(function (doc) {
-				if(updateJSON.io){
-					for (var port in updateJSON.io) {
-					    for (var setting in updateJSON.io[port]) {
-					    	console.log(doc.io)
-					    	console.log(port)
-					    	console.log(doc.io[port][setting])
-					    	console.log(updateJSON.io[port][setting])
-					    	doc.io[port][setting] = updateJSON.io[port][setting]
-					    }
+				if(doc){
+					hadDocuments = true
+					console.log('in a doc: ' + JSON.stringify(doc))
+					if(updateJSON.io){
+						for (var port in updateJSON.io) {
+						    for (var setting in updateJSON.io[port]) {
+						    	console.log(doc.io)
+						    	console.log(port)
+						    	if(doc.io[port]){
+							    	console.log(doc.io[port][setting])
+							    	console.log(updateJSON.io[port][setting])
+							    	doc.io[port][setting] = updateJSON.io[port][setting]
+						    	}
+						    }
+						}
 					}
-				}
-				if(updateJSON.state){
-					doc.state = updateJSON.state
-				}
-				if(updateJSON.stateTickStamp){
-					doc.stateTickStamp = updateJSON.stateTickStamp
-				}
+					if(updateJSON.state){
+						doc.state = updateJSON.state
+					}
+					if(updateJSON.stateTickStamp){
+						doc.stateTickStamp = updateJSON.stateTickStamp
+					}
 
-				console.log('updated doc is: ' + JSON.stringify(doc))
-				mongoNet.save(doc);
-				process.nextTick(function(){
-					callback()	
-				})				
-			});
-		} catch (e) {
-			throw(e)
-		}
+					console.log('updated doc is: ' + JSON.stringify(doc))
+					mongoNet.save(doc, function(doc){
+						process.nextTick(function(){
+							callback()	
+						})	
+					});
+				} else {
+					callback()
+				}					
+			})
+			if(!hadDocuments){
+				console.log('weirdly we are here. Is this because of exactly 0 results???')
+				callback()
+			}
 	},
 	updateConnection: function(connectionId, spheronetId, updateJSON, callback){
 		/*
@@ -213,8 +225,9 @@ var mongoUtils = {
 	},
 	deleteConnection: function(connectionId, callback){
 		/*
-		* TODO: We should make sure that deletes are safe - i.e. that we get rid of their corresponding spheron port.
+		* Note: This function is deprecated and replaced by mongoUtils._mutationHelps.deleteConnection()
 		*/
+		throw('we should not be using this function')
 		try {
 			mongoNet.deleteOne({
 				type: "connection", 
@@ -463,7 +476,7 @@ var mongoUtils = {
 				break;
 			case 4:
 			console.log('removing connection')
-				that._mutationOperators.removeConnection(spheronetId, function(){
+				that._mutationOperators.removeRandomConnection(spheronetId, function(){
 					callback()
 				})
 				break;
@@ -502,38 +515,416 @@ var mongoUtils = {
 			});
 		},
 		insertSpheron:  function(spheronetId, callback){
-			//find a random connection within this spheronet
-			//insert a new spheron into the connection with associated ports...
-			callback()
+			/*
+			* Work in progress. Still validating...
+			*/
+
+			
+			console.log('inserting a spheron into spheronet: ' + spheronetId)
+			//1: find a random connection...
+			mongoUtils._mutationHelpers.getRandomConnectionBySpheronetId(spheronetId, function(thisConnection){
+				//2: create a spheron (maybe with bias...)
+				var thisBiasAngle = Math.floor(Math.random() * 3600) /10
+				var thisInputAngle = Math.floor(Math.random() * 3600) /10
+				var thisOutputAngle = Math.floor(Math.random() * 3600) /10
+				var newSpheronId = generateUUID()
+				var newConnectionId = generateUUID()
+				var thisInputId = generateUUID()
+				var thisOutputId = generateUUID()
+
+				var newSpheronJSON = {
+					"io" : { 
+						"bias" : { "type" : "bias", "angle" : thisBiasAngle, "val" : 1 }
+					}, 
+					"state" : "idle", 
+					"stateTickStamp" : -10, 
+					"spheronetId" : thisConnection.spheronetId,
+					"generationId" : 0, 
+					"offspringId" : 0, 
+					"type" : "spheron", 
+					"spheronId" : newSpheronId, 
+					"name" : newSpheronId 
+				}
+
+				newSpheronJSON[thisInputId] = { "type" : "input", "angle" : thisInputAngle, "val" : 0 }
+				newSpheronJSON[thisOutputId] = { "type" : "output", "angle" : thisOutputAngle, "val" : 0 }
+
+				var newConnectionJSON = {
+					"from" : newSpheronId, 
+					"outputId" : thisOutputId, 
+					"to" : thisConnection.to, 
+					"inputId" : thisConnection.inputId, 
+					"fromId" : newSpheronId, 
+					"toId" : thisConnection.toId, 
+					"spheronetId" : spheronetId, 
+					"generationId" : thisConnection.generationId, 
+					"offspringId" : thisConnection.offspringId, 
+					"type" : "connection", 
+					"connectionId" : newConnectionId
+				}
+
+				//3 create the new connection (utilising the old b end of the existent connection)
+				mongoUtils.createConnection(newConnectionJSON, function(docs){
+					//4 create the spheron
+
+					console.log('new spheron JSON is: ' + JSON.stringify(newSpheronJSON))
+
+					mongoUtils.createSpheron(newSpheronId, newSpheronJSON, function(docs1){
+						//5 update the existent connection
+						thisConnection.to = newSpheronId
+						thisConnection.toId = newSpheronId
+						thisConnection.inputId = thisInputId
+						console.log('trying to save a spheron')
+
+						mongoNet.save(thisConnection, function(err, result){
+							if(err){
+								throw(err)
+							} else {
+								console.log('we appear to have inserted a spheron')
+								callback()
+							}
+						})
+					})	
+				})
+			})
 		},
 		removeSpheron:  function(spheronetId, callback){
+			/*
+			* Work in Progress... ***
+			*/
+
 			//1: find a random spheron within this spheronet
-			//2: find all connections to the spheron
-			//3: create ports on other spherons and connect the end of each connection to the new port
-			//4: delete this spheron
+			mongoUtils._mutationHelpers.getRandomSpheronBySpheronetId(spheronetId, function(targetSpheron){
+
+				//inputs and outputs should be of the form {inputs:{connectionId: {..connection data..}},outputs:{connectionId: {..connection data..}}} - lets just return the whole lump as JSON to lower further impact on the db????
+
+				//2: iterate connections
+				mongoUtils._mutationHelpers.removeConnectionIterator(spheronetId, targetSpheron.spheronId, targetSpheron.io, 0, function(){
+					console.log('returned from removeConnectionIterator...')
+					//6: delete targetSpheron
+					mongoNet.deleteOne({spheronetId: spheronetId, spheronId: targetSpheron.spheronId}, function(result){
+						console.log('we deleted the spheron (eventually)')
+						callback()
+					})
+				})				
+			})
+		},
+		insertRandomMacro: function(spheronetId, callback){
+			//TODO:
+			//Insert a link out to a previously trained network
+			//wait until that networks timeout has expired
+			//check output value and propagate that into the next set of downstream
+			//note: this does not affect the timeout of this network. That must evolve all on its own.
 			callback()
+		},
+		removeRandomMacro: function(spheronetId, callback){
+			//TODO: (only if this spheronet has random macros obviously)...
+
+			//essentially short this macro function out by connecting the output to the input and then optimising.
+			callback()
+
 		},
 		insertConnection:  function(spheronetId, callback){
 			//1: find a random spheron within this spheronet
 			//2: find another random spheron
-			//3: create ports on each
-			//4: create a connection object.
-			//Note: must also insert associated spheron ports
-			callback()
+			//3: create an output port on the first, create an input port on the second
+			//4: create a connection object 1st > 2nd.
+
+			mongoUtils._mutationHelpers.getRandomSpheronBySpheronetId(spheronetId, function(fromSpheron){
+				mongoUtils._mutationHelpers.getRandomSpheronBySpheronetId(spheronetId, function(toSpheron){
+					var fromPortId = generateUUID()
+					var fromAngle = (Math.floor(Math.random() * 3600) /10)
+
+					var toPortId = generateUUID()
+					var toAngle = (Math.floor(Math.random() * 3600) /10)
+					toSpheron.io[toPortId] = {
+						type:'input',
+						angle: toAngle,
+						val: 0
+					}
+
+					mongoNet.save(toSpheron, function(docs){
+						console.log('save response: ' + docs)
+						//now create the actual connection object.
+						var connectionObject = {
+							from: fromSpheron.name,
+							fromId: fromSpheron.spheronId,
+							outputId: toPortId,
+							to: toSpheron.name,
+							toId: toSpheron.spheronId,
+							inputId: fromPortId,
+							generationId: fromSpheron.generationId,
+							offspringId: fromSpheron.offspringId
+						}
+
+						console.log('saving connection object: ' + JSON.stringify(connectionObject))
+						mongoUtils.createConnection(connectionObject, function(){
+							console.log('connection object created')
+							fromSpheron.io[fromPortId] = {
+								type:'output',
+								angle: fromAngle,
+								val: 0
+							}
+
+							mongoNet.save(fromSpheron, function(docs2){
+								console.log('mongonet save response: ' + docs2)
+								callback()
+							})
+						})
+					})
+				})
+			})
 		},
-		removeConnection:  function(spheronetId, callback){
-			//find a random connection wihtin this spheronet.
-			//Note: must also remove associated spheron ports
-			callback()
+		removeRandomConnection:  function(spheronetId, callback){
+			/*
+			* This function will delete a collection and associated to and from ports in spherons. 
+			*/
+
+			//1: find a random connection within this spheronet.
+			mongoUtils._mutationHelpers.getRandomConnectionBySpheronetId(spheronetId, function(thisConnection){
+				//this is stupid - but its to late to fix this.... Next major.
+				//from is: fromId, outputId
+				//to it: toId, inputId
+				console.log('link from: sp=' + thisConnection.fromId + ' : ' + thisConnection.outputId + ' to this connection object: ')
+					//delete the port in the from spheron
+					
+				mongoUtils._mutationHelpers.deletePortFromSpheron(thisConnection.fromId, spheronetId, thisConnection.outputId, function(){
+					console.log('we have deleted one end of the connection')
+					mongoUtils._mutationHelpers.deletePortFromSpheron(thisConnection.toId, spheronetId, thisConnection.inputId, function(){
+						console.log('we have deleted the other end of the connection')
+						mongoNet.deleteOne({spheronetId: spheronetId, connectionId: thisConnection.connectionId}, function(err, obj){
+							if(err) throw err
+							console.log('we deleted connection: ' + thisConnection.connectionId + ' from spheronet: ' + spheronetId)
+							callback()
+						})
+					})
+				})
+			})
 		},
 		tweakPort:  function(spheronetId, callback){
-			//find a random spheron within this spheronet
-			//find a random port in this spheron
-			//Note: Will change the angle slightly of either a port or a bias.
-			callback()
+			console.log("tweaking port of a spheron in spheronetId: " + spheronetId)
+			mongoUtils._mutationHelpers.getRandomSpheronBySpheronetId(spheronetId, function(thisSpheron){
+				var randomPort = Object.keys(thisSpheron.io)[Math.floor(Math.random() * Object.keys(thisSpheron.io).length)]
+				//console.log('a random port: ' +  randomPort)
+				//console.log("portSettings: " + JSON.stringify(thisDoc.io[randomPort]))
+				var newAngle = (Math.random > 0.5) ? thisSpheron.io[randomPort].angle + (Math.floor(Math.random() * 300) /10) : thisSpheron.io[randomPort].angle - (Math.floor(Math.random() * 300) /10)
+				thisSpheron.io[randomPort].angle = newAngle
+				mongoNet.save(thisSpheron)
+				callback()
+			})
+		}
+	},
+	_mutationHelpers:{
+		/*
+		* Work in progress... Iterator...
+		*/
+		removeConnectionIterator(spheronetId, spheronId, ports, portIdx, callback){
+			/*
+			* Requires validation...
+			*/
+			console.log('ports: ' + JSON.stringify(ports))
+			
+			if(Object.keys(ports)[portIdx]){
+				var thisPort = ports[Object.keys(ports)[portIdx]]
+				console.log('this Port: ' + JSON.stringify(thisPort))
+				//3: find the far end Spheron
+				if(thisPort.type == "input"){
+					console.log('Found an input port - now I need to find the connection, delete the far end outport and the connection...')
+					console.log(spheronetId, spheronId, Object.keys(ports)[portIdx])
+					mongoUtils._mutationHelpers.getConnectionBySpheronetToSpheronToPort(spheronetId, spheronId, Object.keys(ports)[portIdx], function(thisConnection){
+						if(thisConnection){
+							console.log('back from connection finder with: ' +  JSON.stringify(thisConnection))
+							mongoUtils._mutationHelpers.getSpheronBySpheronIdAndSpheronetId(spheronetId, thisConnection.fromId, function(targetSpheron){
+								console.log('far end spheron to delete port from is: ' + JSON.stringify(targetSpheron))
+								//4: delete the correspondibg port from the far end spheron
+								if(targetSpheron){
+									delete(targetSpheron.io[thisConnection.outputId])
+									mongoNet.save(targetSpheron, function(){
+										//5: delete the conection object.
+										mongoNet.deleteOne({spheronetId: spheronetId, connectionId: thisConnection.connectionId}, function(err,doc){
+											//console.log('*')
+											console.log('deleted spheronetId: ' +  spheronetId + ' connectionId: ' + thisConnection.connectionId)
+											//Future TODO: if the far end spheron has no outputs then we should recurisvely delete it as well...
+											portIdx += 1
+											mongoUtils._mutationHelpers.removeConnectionIterator(spheronetId, spheronId, ports, portIdx, callback)
+										})
+									})
+								} else {
+									portIdx += 1
+									mongoUtils._mutationHelpers.removeConnectionIterator(spheronetId, spheronId, ports, portIdx, callback)
+								}
+							})
+						} else {
+							console.log('no connection found - perhaps this is an input.')
+							portIdx += 1
+							mongoUtils._mutationHelpers.removeConnectionIterator(spheronetId, spheronId, ports, portIdx, callback)
+						}
+					})
+				} else if(thisPort.type == "output"){
+					console.log('Found an output port - now I need to delete the far end inputPort and the connection object...')
+					console.log(spheronetId, spheronId, Object.keys(ports)[portIdx])
+					
+					mongoUtils._mutationHelpers.getConnectionBySpheronetFromSpheronFromPort(spheronetId, spheronId, Object.keys(ports)[portIdx], function(thisConnection){
+						console.log('got back from getConnectionBySpheronetFromSpheronFromPort')
+						if(thisConnection){
+							console.log('back from connection finder with: ' +  JSON.stringify(thisConnection))
+							mongoUtils._mutationHelpers.getSpheronBySpheronIdAndSpheronetId(spheronetId, thisConnection.toId, function(targetSpheron){
+								console.log('far end spheron to delete port to is: ' + JSON.stringify(targetSpheron))
+								//4: delete the correspondibg port from the far end spheron
+
+								delete(targetSpheron.io[thisConnection.inputId])
+								mongoNet.save(targetSpheron, function(){
+									console.log('*')
+
+									//5: delete the conection object.
+									//Future TODO: if the far end spheron has no outputs then we should recurisvely delete it as well...
+									mongoNet.deleteOne({spheronetId: spheronetId, connectionId: thisConnection.connectionId}, function(err,doc){
+										console.log('deleted spheronetId: ' +  spheronetId + ' connectionId: ' + thisConnection.connectionId)
+										//Future TODO: if the far end spheron has no outputs then we should recurisvely delete it as well...
+										portIdx += 1
+										mongoUtils._mutationHelpers.removeConnectionIterator(spheronetId, spheronId, ports, portIdx, callback)
+									})
+								})
+							})
+						} else {
+							console.log('no connection found - perhaps this is an input.')
+							portIdx += 1
+							mongoUtils._mutationHelpers.removeConnectionIterator(spheronetId, spheronId, ports, portIdx, callback)						
+						}					
+					})
+				} else {
+					console.log('This connection is not an input or output (bias most likely).')
+					portIdx += 1
+					mongoUtils._mutationHelpers.removeConnectionIterator(spheronetId, spheronId, ports, portIdx, callback)
+				}
+			} else {
+				console.log('no more ports to iterate over - returning back from removeConnection Iterator...')
+				callback()
+			}
+		},
+		deletePortFromSpheron(spheronId, spheronetId, portId, callback){
+			var unsetString = {}
+			unsetString['io.' + portId] = ""
+			console.log('unset string: ' + JSON.stringify(unsetString))
+			mongoNet.update({
+				spheronId: spheronId,	
+				spheronetId: spheronetId
+			},
+			{
+				$unset: unsetString
+			}, function(err,doc){
+				if(err){
+					console.log(err)
+					process.exit()
+				} else{
+					console.log('deleted the output from the A end')
+					callback()
+				}
+			})
+		},
+		getSpheronBySpheronIdAndSpheronetId: function(spheronetId, spheronId, callback){
+			mongoNet.findOne({
+				spheronetId: spheronetId,
+				spheronId: spheronId
+			}, function(err,doc){
+				if(err){
+					callback()
+				} else if(doc){
+					callback(doc)
+				} else {
+					callback()
+				}
+			})
+		},
+		getConnectionBySpheronetToSpheronToPort: function(spheronetId, toId, portId, callback){
+			//in other words a connection which is pointing at a given spheron and port combination...
+			mongoNet.findOne({
+				type: 'connection',
+				spheronetId: spheronetId,
+				toId: toId,
+				inputId: portId
+			}, function(err,doc){
+				if(err){
+					console.log(err)
+					console.log('calling back null')
+					callback()
+				} else if(doc){
+					console.log('calling back with: ' + JSON.stringify(doc))
+					callback(doc)
+				} else {
+					callback()
+				}
+			})
+		},		
+		getConnectionBySpheronetFromSpheronFromPort: function(spheronetId, fromId, portId, callback){
+			//in other words a connection which is pointing at a given spheron and port combination...
+			console.log('***')
+			console.log(spheronetId,fromId,portId)
+			mongoNet.findOne({
+				type: 'connection',
+				spheronetId: spheronetId,
+				fromId: fromId,
+				inputId: portId
+			}, function(err,doc){
+				console.log('in callback')
+				console.log('getConnectionBySpheronetFromSpheronFromPort')
+				if(err){
+					console.log(err)
+					console.log('calling back null')
+					//process.exit()
+					callback()
+				} else if(doc){
+					console.log('calling back with: ' + JSON.stringify(doc))
+					//process.exit()
+					callback(doc)
+				} else {
+					console.log('we hit the default callback')
+					//process.exit()
+					callback()
+				}
+			})
+		},
+		getRandomSpheronBySpheronetId: function(spheronetId, callback){
+			mongoNet.aggregate([ 
+				  { $match: { "type": "spheron" }},
+				  { $sample: {size: 1}}
+				], 
+				function(err,docs){
+					docs.forEach(function(thisDoc){
+						if(!thisDoc){
+							/*
+							* Note: We should never end up down this path - but just in case...
+							*/
+							console.log('finished iterating')
+							callback()
+						} else{
+							callback(thisDoc)
+						}						
+					})
+				}
+			);
+		},
+		getRandomConnectionBySpheronetId: function(spheronetId, callback){
+			mongoNet.aggregate([ 
+				  { $match: { "type": "connection" }},
+				  { $sample: {size: 1}}
+				], 
+				function(err,docs){
+					docs.forEach(function(thisDoc){
+						if(!thisDoc){
+							/*
+							* Note: We should never end up down this path - but just in case...
+							*/
+							console.log('finished iterating')
+							callback()
+						} else{
+							callback(thisDoc)
+						}						
+					})
+				}
+			);
 		}
 	}
-
 }
 
 module.exports = mongoUtils;

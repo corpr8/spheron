@@ -12,6 +12,7 @@
    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
 
    <script>
+    var msgCount=0
       jQuery(document).ready(function() {
          var socket = io.connect();
          var form = jQuery('#myForm');
@@ -19,7 +20,14 @@
          var diagnosticArea = jQuery('#diagnosticArea');
 
          socket.on('new message', function(data){
-            diagnosticArea.prepend('<div class="well">' + JSON.stringify(data.message) + '</div>');
+            msgCount += 1
+            if(msgCount > 100){ diagnosticArea.children().last().remove() }
+            var thisItem = document.createElement("div");
+            thisItem.className = "well"
+            thisItem.appendChild( document.createTextNode(JSON.stringify(data.message)) )
+            diagnosticArea.prepend(thisItem)
+
+            //diagnosticArea.prepend('<div class="well">' + JSON.stringify(data.message) + '</div>');
          });
       });
    </script>
